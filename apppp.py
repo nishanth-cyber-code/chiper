@@ -28,15 +28,16 @@ def handle_connect():
 
 @socketio.on('message')
 def handle_message(data):
-    # 3. Save: Put the new message into Supabase
+    # data now includes 'text', 'sender', AND 'reply_to'
     supabase.table("messages").insert({
         "text": data['text'], 
-        "sender": data['sender']
+        "sender": data['sender'],
+        "reply_to": data.get('reply_to') # Add a 'reply_to' column in Supabase if you want to save it!
     }).execute()
     
-    # 4. Broadcast: Send to everyone online
     emit('render_message', data, broadcast=True)
 
 if __name__ == '__main__':
     socketio.run(app)
+
 
