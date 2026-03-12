@@ -87,8 +87,8 @@
 <script>
     // --- 1. CONFIGURATION ---
     const socket = io("https://chiper-pbe3.onrender.com/"); 
-    let currentInput = '';
-    let currentUser = ""; // 'UserA' or 'UserB'
+    let currentUser = localStorage.getItem('chat_identity') || "";
+    let currentInput = ''; // 'UserA' or 'UserB'
     let replyingTo = null; // Stores the text we are replying to
 
     const chatContainer = document.getElementById('message-container');
@@ -105,12 +105,16 @@
     function calculate() {
         // LOGIN CHECK
         if (currentInput === '2912') {
-            currentUser = "UserA"; // UserA will always be on the RIGHT
+            currentUser = "UserA";
+            localStorage.setItem('chat_identity', 'UserA');// UserA will always be on the RIGHT
             unlockChat();
+            location.reload();
             return;
         } else if (currentInput === '1229') {
-            currentUser = "UserB"; // UserB will always be on the LEFT
+            currentUser = "UserB";
+            localStorage.setItem('chat_identity', 'UserB');// UserB will always be on the LEFT
             unlockChat();
+            location.reload();
             return;
         }
 
@@ -191,4 +195,5 @@
     function handleClearChat() { chatContainer.innerHTML = ''; }
 </script>
 </body></html>
+
 
