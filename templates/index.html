@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Secure Calc</title>
+<!-- Google Fonts: Manrope -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#f9a406',
+          },
+          fontFamily: {
+            sans: ['Manrope', 'sans-serif'],
+          },
+          borderRadius: {
+            'custom': '8px',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-animations">
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    /* Hide scrollbar but keep functionality */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans min-h-screen flex items-center justify-center p-4">
+<!-- BEGIN: Application Container -->
+<div class="w-full max-w-md bg-zinc-900 border border-zinc-800 shadow-2xl overflow-hidden rounded-custom relative min-h-[600px] flex flex-col" id="app-container">
+<!-- BEGIN: Calculator Interface -->
+<div class="flex flex-col h-full p-6 animate-fade-in" data-purpose="calculator-module" id="calc-interface">
+<div class="mb-8">
+<h1 class="text-zinc-500 text-sm font-medium tracking-widest uppercase mb-1">Secure Calc v2.0</h1>
+<div class="bg-zinc-800/50 p-6 rounded-custom text-right text-4xl font-light tracking-tight h-24 flex items-end justify-end overflow-hidden" id="calc-display">0</div>
+</div>
+<div class="grid grid-cols-4 gap-3 flex-grow">
+<!-- Row 1 -->
+<button class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-custom text-zinc-400 transition-colors" onclick="press('AC')">AC</button>
+<button class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-custom text-primary transition-colors" onclick="press('/')">÷</button>
+<button class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-custom text-primary transition-colors" onclick="press('*')">×</button>
+<button class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-custom text-zinc-400 transition-colors" onclick="press('DEL')">⌫</button>
+<!-- Row 2 -->
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('7')">7</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('8')">8</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('9')">9</button>
+<button class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-custom text-primary transition-colors" onclick="press('-')">−</button>
+<!-- Row 3 -->
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('4')">4</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('5')">5</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('6')">6</button>
+<button class="bg-zinc-800 hover:bg-zinc-700 p-4 rounded-custom text-primary transition-colors" onclick="press('+')">+</button>
+<!-- Row 4 -->
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('1')">1</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('2')">2</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('3')">3</button>
+<button class="bg-primary hover:bg-orange-500 p-4 rounded-custom text-zinc-950 font-bold row-span-2 transition-transform active:scale-95" onclick="calculate()">=</button>
+<!-- Row 5 -->
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom col-span-2 transition-colors" onclick="press('0')">0</button>
+<button class="bg-zinc-800/40 hover:bg-zinc-700 p-4 rounded-custom transition-colors" onclick="press('.')">.</button>
+</div>
+</div>
+<!-- END: Calculator Interface -->
+<!-- BEGIN: Chat Interface (Hidden by default) -->
+<div class="hidden flex-col h-full animate-fade-in" data-purpose="secure-chat-module" id="chat-interface">
+<!-- Header with Clear Chat Button -->
+<header class="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 backdrop-blur-md sticky top-0 z-10">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+<span class="font-bold text-sm tracking-tight">ENCRYPTED CHANNEL</span>
+</div>
+<button class="text-xs bg-zinc-800 hover:bg-red-900/30 text-zinc-400 hover:text-red-400 px-3 py-1.5 rounded-custom border border-zinc-700 transition-all active:scale-95" onclick="handleClearChat()">
+          Clear Chat
+        </button>
+</header>
+<!-- Message Area -->
+<div class="flex-grow overflow-y-auto p-4 space-y-4 no-scrollbar flex flex-col" id="message-container">
+<!-- System Message -->
+<div class="text-center">
+<span class="text-[10px] text-zinc-600 bg-zinc-800/30 px-2 py-1 rounded">End-to-end encryption active</span>
+</div>
+<!-- Initial Message -->
+<div class="self-start max-w-[80%]">
+<div class="bg-zinc-800 text-zinc-200 p-3 rounded-custom rounded-tl-none text-sm">
+            Authentication successful. All messages are ephemeral.
+          </div>
+<span class="text-[10px] text-zinc-500 mt-1 block">System • 12:00 PM</span>
+</div>
+</div>
+<!-- Input Area -->
+<footer class="p-4 border-t border-zinc-800 bg-zinc-900">
+<form class="flex gap-2" id="chat-form" onsubmit="sendMessage(event)">
+<input autocomplete="off" class="flex-grow bg-zinc-800 border-zinc-700 rounded-custom text-sm focus:ring-primary focus:border-primary placeholder:text-zinc-600" id="chat-input" placeholder="Secure message..." type="text"/>
+<button class="bg-primary hover:bg-orange-500 text-zinc-950 p-2 rounded-custom transition-colors" type="submit">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+</button>
+</form>
+</footer>
+</div>
+<!-- END: Chat Interface -->
+<!-- BEGIN: Lockout Notification -->
+<div class="hidden absolute inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm flex items-center justify-center p-8 text-center animate-fade-in" id="lockout-alert">
+<div class="space-y-4">
+<div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+<svg fill="none" height="32" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg"><rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+</div>
+<h2 class="text-xl font-bold">Security Lockout</h2>
+<p class="text-zinc-400 text-sm">Protocol 15-4 triggered. Chat has been wiped. Access is restricted for the next 15 minutes to prevent forensic recovery.</p>
+<button class="w-full bg-zinc-800 hover:bg-zinc-700 py-3 rounded-custom text-sm font-semibold transition-colors" onclick="acknowledgeLockout()">Acknowledge</button>
+</div>
+</div>
+<!-- END: Lockout Notification -->
+</div>
+<!-- END: Application Container -->
+<script data-purpose="calculator-logic">
+    let currentInput = '';
+    const display = document.getElementById('calc-display');
+    const secretCode = '1234';
+
+    function press(val) {
+      if (val === 'AC') {
+        currentInput = '';
+      } else if (val === 'DEL') {
+        currentInput = currentInput.slice(0, -1);
+      } else {
+        if (currentInput.length < 12) {
+          currentInput += val;
+        }
+      }
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      display.innerText = currentInput || '0';
+    }
+
+    function calculate() {
+      if (currentInput === secretCode) {
+        unlockChat();
+        currentInput = '';
+        updateDisplay();
+        return;
+      }
+
+      try {
+        if (currentInput === '') return;
+        // Clean input for simple eval
+        let calcStr = currentInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+        const result = eval(calcStr);
+        currentInput = Number.isInteger(result) ? result.toString() : result.toFixed(2).toString();
+        updateDisplay();
+      } catch (e) {
+        display.innerText = 'Error';
+        currentInput = '';
+      }
+    }
+
+    function unlockChat() {
+      document.getElementById('calc-interface').classList.add('hidden');
+      document.getElementById('chat-interface').classList.remove('hidden');
+      document.getElementById('chat-interface').classList.add('flex');
+    }
+  </script>
+<script data-purpose="chat-functionality">
+    const chatContainer = document.getElementById('message-container');
+    const chatInput = document.getElementById('chat-input');
+    const chatForm = document.getElementById('chat-form');
+    const sendButton = chatForm.querySelector('button');
+    let isLocked = false;
+
+    function sendMessage(e) {
+      if (e) e.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      if (isLocked) {
+        // Simulation: Sending a message resets the lockout
+        resetLockout();
+        appendMessage("Protocol Override: Identity Verified. Communications restored.", 'system');
+        chatInput.value = '';
+        return;
+      }
+
+      appendMessage(text, 'user');
+      chatInput.value = '';
+
+      setTimeout(() => {
+        appendMessage("Signal received. Encrypted tunnel stable.", 'remote');
+      }, 1000);
+    }
+
+    function appendMessage(text, type) {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const messageDiv = document.createElement('div');
+      
+      if (type === 'user') {
+        messageDiv.className = 'self-end max-w-[80%] animate-fade-in';
+        messageDiv.innerHTML = `
+          <div class="bg-primary text-zinc-950 p-3 rounded-custom rounded-tr-none text-sm font-medium shadow-lg">
+            ${text}
+          </div>
+<span class="text-[10px] text-zinc-500 mt-1 block text-right">You • ${time}</span>
+        `;
+      } else if (type === 'system') {
+        messageDiv.className = 'text-center w-full animate-fade-in my-2';
+        messageDiv.innerHTML = `<span class="text-[10px] text-zinc-400 bg-zinc-800/50 px-3 py-1 rounded-full">${text}</span>`;
+      } else {
+        messageDiv.className = 'self-start max-w-[80%] animate-fade-in';
+        messageDiv.innerHTML = `
+          <div class="bg-zinc-800 text-zinc-200 p-3 rounded-custom rounded-tl-none text-sm border border-zinc-700 shadow-lg">
+            ${text}
+          </div>
+<span class="text-[10px] text-zinc-500 mt-1 block">Contact • ${time}</span>
+        `;
+      }
+      
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function handleClearChat() {
+      // Clear messages
+      chatContainer.innerHTML = '';
+      appendMessage("Chat History Wiped by User.", 'system');
+      
+      // Trigger Lockout
+      isLocked = true;
+      chatInput.placeholder = "Sending disabled for 15 minutes...";
+      chatInput.classList.add('opacity-50', 'cursor-not-allowed');
+      sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+      
+      // Show the formal alert overlay as well
+      document.getElementById('lockout-alert').classList.remove('hidden');
+      document.getElementById('lockout-alert').classList.add('flex');
+    }
+
+    function resetLockout() {
+      isLocked = false;
+      chatInput.placeholder = "Secure message...";
+      chatInput.classList.remove('opacity-50', 'cursor-not-allowed');
+      sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
+    function acknowledgeLockout() {
+       document.getElementById('lockout-alert').classList.add('hidden');
+       document.getElementById('lockout-alert').classList.remove('flex');
+    }
+  </script>
+</body>
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        // Replace with your actual Render URL!
+        const socket = io("https://your-app-name.onrender.com");
+
+        const sendBtn = document.getElementById('send-button');
+        const messageInput = document.getElementById('message-input');
+
+        sendBtn.onclick = function() {
+            const msg = messageInput.value;
+            socket.emit('message', msg); 
+            messageInput.value = "";
+        };
+
+        socket.on('render_message', function(msg) {
+            alert("New message: " + msg);
+        });
+    </script>
+</body>
+</html>
