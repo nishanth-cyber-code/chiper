@@ -80,15 +80,17 @@
 </div>
 
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-
 <script>
     // --- 1. CONFIGURATION ---
-    const socket = io("https://chiper-pbe3.onrender.com/"); // CHANGE THIS TO YOUR LINK
-    const secretCode = '1310';
+    const socket = io("https://chiper-pbe3.onrender.com/"); 
     let currentInput = '';
-    const myId = Math.random().toString(36).substring(7); // Gives you a unique random ID for this session
+    let currentUser = ""; // 'UserA' or 'UserB'
+    let replyingTo = null; // Stores the text we are replying to
 
-    // --- 2. CALCULATOR LOGIC ---
+    const chatContainer = document.getElementById('message-container');
+    const chatInput = document.getElementById('chat-input');
+
+    // --- 2. CALCULATOR LOGIC (DUAL LOGIN) ---
     function press(val) {
         if (val === 'AC') currentInput = '';
         else if (val === 'DEL') currentInput = currentInput.slice(0, -1);
@@ -97,12 +99,18 @@
     }
 
     function calculate() {
-        if (currentInput === secretCode) {
-            document.getElementById('calc-interface').classList.add('hidden');
-            document.getElementById('chat-interface').classList.remove('hidden');
-            document.getElementById('chat-interface').classList.add('flex');
+        // LOGIN CHECK
+        if (currentInput === '2912') {
+            currentUser = "UserA"; // UserA will always be on the RIGHT
+            unlockChat();
+            return;
+        } else if (currentInput === '1229') {
+            currentUser = "UserB"; // UserB will always be on the LEFT
+            unlockChat();
             return;
         }
+
+        // MATH CHECK
         try {
             let res = eval(currentInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-'));
             currentInput = res.toString();
@@ -110,40 +118,70 @@
         } catch (e) { document.getElementById('calc-display').innerText = 'Error'; currentInput = ''; }
     }
 
-    // --- 3. CHAT LOGIC ---
-    const chatContainer = document.getElementById('message-container');
-    const chatInput = document.getElementById('chat-input');
+    function unlockChat() {
+        document.getElementById('calc-interface').classList.add('hidden');
+        document.getElementById('chat-interface').classList.remove('hidden');
+        document.getElementById('chat-interface').classList.add('flex');
+    }
 
+    // --- 3. CHAT LOGIC ---
     function sendMessage(e) {
         if (e) e.preventDefault();
         const text = chatInput.value.trim();
         if (!text) return;
 
-        // Send to Python Server
-        socket.emit('message', { text: text, sender: myId });
+        // Send to Python with Reply data
+        socket.emit('message', { 
+            text: text, 
+            sender: currentUser,
+            reply_to: replyingTo 
+        });
+
         chatInput.value = '';
+        cancelReply(); // Clear the reply bar
     }
 
-    // Listen for incoming messages from Python
     socket.on('render_message', (data) => {
-        const type = (data.sender === myId) ? 'user' : 'remote';
-        appendMessage(data.text, type);
+        // If the sender of the message is ME, put it on the RIGHT
+        const isMe = (data.sender === currentUser);
+        appendMessage(data, isMe);
     });
 
-    function appendMessage(text, type) {
+    function appendMessage(data, isMe) {
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const messageDiv = document.createElement('div');
         
-        if (type === 'user') {
-            messageDiv.className = 'self-end max-w-[80%] animate-fade-in';
-            messageDiv.innerHTML = `<div class="bg-primary text-zinc-950 p-3 rounded-custom rounded-tr-none text-sm font-medium">${text}</div><span class="text-[10px] text-zinc-500 mt-1 block text-right">You • ${time}</span>`;
-        } else {
-            messageDiv.className = 'self-start max-w-[80%] animate-fade-in';
-            messageDiv.innerHTML = `<div class="bg-zinc-800 text-zinc-200 p-3 rounded-custom rounded-tl-none text-sm border border-zinc-700">${text}</div><span class="text-[10px] text-zinc-500 mt-1 block">Contact • ${time}</span>`;
-        }
+        // Alignment: Right if isMe, Left if not
+        messageDiv.className = isMe ? 'self-end max-w-[80%] mb-2' : 'self-start max-w-[80%] mb-2';
+        
+        // Handle the Reply preview inside the bubble
+        let replyHTML = data.reply_to ? 
+            `<div class="text-[10px] opacity-60 italic border-l-2 border-primary pl-2 mb-1">Replying to: ${data.reply_to}</div>` : '';
+
+        messageDiv.innerHTML = `
+            ${replyHTML}
+            <div class="${isMe ? 'bg-primary text-zinc-950' : 'bg-zinc-800 text-zinc-200'} p-3 rounded-custom shadow-lg relative group">
+                <p class="text-sm">${data.text}</p>
+                <button onclick="startReply('${data.text.replace(/'/g, "\\'")}')" class="absolute -top-2 -right-2 bg-zinc-700 text-white rounded-full p-1 hidden group-hover:block text-[10px]">↩</button>
+            </div>
+            <span class="text-[10px] text-zinc-500 mt-1 block ${isMe ? 'text-right' : 'text-left'}">${data.sender} • ${time}</span>
+        `;
         
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // --- 4. REPLY UI HELPERS ---
+    function startReply(text) {
+        replyingTo = text;
+        document.getElementById('reply-preview').innerText = "Replying to: " + text;
+        document.getElementById('reply-bar').classList.remove('hidden');
+        chatInput.focus();
+    }
+
+    function cancelReply() {
+        replyingTo = null;
+        document.getElementById('reply-bar').classList.add('hidden');
     }
 
     function handleClearChat() { chatContainer.innerHTML = ''; }
