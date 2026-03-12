@@ -108,13 +108,11 @@
             currentUser = "UserA";
             localStorage.setItem('chat_identity', 'UserA');// UserA will always be on the RIGHT
             unlockChat();
-            location.reload();
             return;
         } else if (currentInput === '1229') {
             currentUser = "UserB";
             localStorage.setItem('chat_identity', 'UserB');// UserB will always be on the LEFT
             unlockChat();
-            location.reload();
             return;
         }
 
@@ -195,5 +193,6 @@
     function handleClearChat() { chatContainer.innerHTML = ''; }
 </script>
 </body></html>
+
 
 
