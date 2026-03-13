@@ -149,7 +149,8 @@
 
     socket.on('render_message', (data) => {
         // If the sender of the message is ME, put it on the RIGHT
-        const isMe = (data.sender === currentUser);
+        const savedIdentity = localStorage.getItem('chat_identity');
+        const isMe = (savedIdentity && data.sender === savedIdentity);
         appendMessage(data, isMe);
     });
 
@@ -193,6 +194,7 @@
     function handleClearChat() { chatContainer.innerHTML = ''; }
 </script>
 </body></html>
+
 
 
 
