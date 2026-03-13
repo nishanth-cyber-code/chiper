@@ -82,19 +82,19 @@
         </footer>
     </div>
 </div>
-
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script>
     // --- 1. CONFIGURATION ---
     const socket = io("https://chiper-pbe3.onrender.com/"); 
-    let currentUser = localStorage.getItem('chat_identity') || "";
-    let currentInput = ''; // 'UserA' or 'UserB'
-    let replyingTo = null; // Stores the text we are replying to
-
     const chatContainer = document.getElementById('message-container');
     const chatInput = document.getElementById('chat-input');
+    
+    // IMMEDIATELY check memory so history renders correctly
+    let currentUser = localStorage.getItem('chat_identity') || ""; 
+    let currentInput = '';
+    let replyingTo = null;
 
-    // --- 2. CALCULATOR LOGIC (DUAL LOGIN) ---
+    // --- 2. CALCULATOR & LOGIN LOGIC ---
     function press(val) {
         if (val === 'AC') currentInput = '';
         else if (val === 'DEL') currentInput = currentInput.slice(0, -1);
@@ -103,40 +103,44 @@
     }
 
     function calculate() {
-        // LOGIN CHECK
         if (currentInput === '2912') {
-            currentUser = "UserA";
-            localStorage.setItem('chat_identity', 'UserA');// UserA will always be on the RIGHT
+            currentUser = "HER";
+            localStorage.setItem('chat_identity', 'UserA'); 
             unlockChat();
             return;
-        } else if (currentInput === '1229') {
+        } else if (currentInput === 'MW') {
             currentUser = "UserB";
-            localStorage.setItem('chat_identity', 'UserB');// UserB will always be on the LEFT
+            localStorage.setItem('chat_identity', 'UserB'); 
             unlockChat();
             return;
         }
 
-        // MATH CHECK
         try {
             let res = eval(currentInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-'));
             currentInput = res.toString();
             document.getElementById('calc-display').innerText = currentInput;
-        } catch (e) { document.getElementById('calc-display').innerText = 'Error'; currentInput = ''; }
+        } catch (e) { 
+            document.getElementById('calc-display').innerText = 'Error'; 
+            currentInput = ''; 
+        }
     }
 
     function unlockChat() {
         document.getElementById('calc-interface').classList.add('hidden');
         document.getElementById('chat-interface').classList.remove('hidden');
         document.getElementById('chat-interface').classList.add('flex');
+        // Small delay to ensure the container is visible before scrolling
+        setTimeout(() => {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 100);
     }
 
     // --- 3. CHAT LOGIC ---
     function sendMessage(e) {
         if (e) e.preventDefault();
         const text = chatInput.value.trim();
-        if (!text) return;
+        if (!text || !currentUser) return; // Prevent sending if not logged in
 
-        // Send to Python with Reply data
         socket.emit('message', { 
             text: text, 
             sender: currentUser,
@@ -144,13 +148,12 @@
         });
 
         chatInput.value = '';
-        cancelReply(); // Clear the reply bar
+        cancelReply();
     }
 
     socket.on('render_message', (data) => {
-        // If the sender of the message is ME, put it on the RIGHT
-        const savedIdentity = localStorage.getItem('chat_identity');
-        const isMe = (savedIdentity && data.sender === savedIdentity);
+        // This is the magic line: it checks the sender against your stored identity
+        const isMe = (currentUser && data.sender === currentUser);
         appendMessage(data, isMe);
     });
 
@@ -158,27 +161,34 @@
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const messageDiv = document.createElement('div');
         
-        // Alignment: Right if isMe, Left if not
-        messageDiv.className = isMe ? 'self-end max-w-[80%] mb-2' : 'self-start max-w-[80%] mb-2';
+        messageDiv.className = isMe ? 'self-end max-w-[80%] mb-4' : 'self-start max-w-[80%] mb-4';
         
-        // Handle the Reply preview inside the bubble
         let replyHTML = data.reply_to ? 
-            `<div class="text-[10px] opacity-60 italic border-l-2 border-primary pl-2 mb-1">Replying to: ${data.reply_to}</div>` : '';
+            `<div class="text-[10px] opacity-60 italic border-l-2 border-primary pl-2 mb-1 bg-zinc-800/40 p-1 rounded">
+                ${data.reply_to}
+            </div>` : '';
+
+        // Safely handle quotes in the reply button
+        const safeText = data.text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
         messageDiv.innerHTML = `
             ${replyHTML}
-            <div class="${isMe ? 'bg-primary text-zinc-950' : 'bg-zinc-800 text-zinc-200'} p-3 rounded-custom shadow-lg relative group">
+            <div class="${isMe ? 'bg-primary text-zinc-950 rounded-tr-none' : 'bg-zinc-800 text-zinc-200 rounded-tl-none'} p-3 rounded-2xl shadow-lg relative group">
                 <p class="text-sm">${data.text}</p>
-                <button onclick="startReply('${data.text.replace(/'/g, "\\'")}')" class="absolute -top-2 -right-2 bg-zinc-700 text-white rounded-full p-1 hidden group-hover:block text-[10px]">↩</button>
+                <button onclick="startReply('${safeText}')" 
+                        class="absolute -top-2 ${isMe ? '-left-2' : '-right-2'} bg-zinc-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] shadow-md z-10">
+                    ↩
+                </button>
             </div>
-            <span class="text-[10px] text-zinc-500 mt-1 block ${isMe ? 'text-right' : 'text-left'}">${data.sender} • ${time}</span>
+            <span class="text-[10px] text-zinc-500 mt-1 block ${isMe ? 'text-right' : 'text-left'}">
+                ${data.sender} • ${time}
+            </span>
         `;
         
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // --- 4. REPLY UI HELPERS ---
     function startReply(text) {
         replyingTo = text;
         document.getElementById('reply-preview').innerText = "Replying to: " + text;
@@ -191,10 +201,11 @@
         document.getElementById('reply-bar').classList.add('hidden');
     }
 
-    function handleClearChat() { chatContainer.innerHTML = ''; }
+    // --- 4. AUTO-LOADER ---
+    window.addEventListener('DOMContentLoaded', () => {
+        if (currentUser) {
+            unlockChat();
+        }
+    });
 </script>
 </body></html>
-
-
-
-
